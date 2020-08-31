@@ -9,22 +9,94 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## K-Nearest Neighbours
+KNN is used to classify unlabelled items based on **feature similarities** with **K Nearest Neighbours**. 
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+![KNN illustration from Hefin Rhys](KNN-1.jpg)
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
 
-```{r cars}
-summary(cars)
+Procedures of CNN:
+
+1. Select the features
+2. KNN algorithm calculates the **distance (based on the features)** between the unlabelled and all labelled cases
+3. Select the nearest K candidates based on the distance
+4. Let the K candidates vote
+
+
+![KNN Algorithm](KNN-2.jpg)
+
+
+## Explore The Data
+```{r install-package, echo = F, message = F, error = F}
+#install.packages("mlr", dependencies = T)
+library(mlr)
+library(tidyverse)
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+data(diabetes, package = "mclust")
+diabetesTib <- as_tibble(diabetes)
+summary(diabetesTib)
+head(diabetesTib)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r}
+ggplot(diabetesTib, aes(glucose, insulin, col = class)) + geom_point() + theme_bw()
+ggplot(diabetesTib, aes(sspg, insulin, col = class)) + geom_point() + theme_bw()
+ggplot(diabetesTib, aes(sspg, glucose, col = class)) + geom_point() + theme_bw()
+```
+
+
+
+## Using "mlr" package to train the kNN model
+It is important to standardize the predictor variables in the machine learning algorithms. The kNN algorithm wrapped in the mlr package has done this for users.
+
+Building a machine learning model with mlr package in three stages:
+
+1. **Define the task**: specify the predictors and outcomes
+2. **Define the learner**: the name of the algorithm to use (with additional parameters)
+3. **Train the model**: pass the task(data) to the learner
+
+### Step 1: Define the task -- the outcome and the predictors
+
+![](step1-task.jpg)
+
+```{r, warning= F}
+diabetesTask <- makeClassifTask(data = diabetesTib, target = "class") 
+diabetesTask
+```
+
+
+### Step 2: Define the learner -- algorithm 
+![](step2-learner.jpg)
+
+```{r }
+knn <- makeLearner("classif.knn", par.vals = list("k" = 2))
+
+```
+
+We can also use `listLearners("classif")$class` to list all available learners. 
+
+
+### Step 3: Train the model
+![](step3-train.jpg)
+
+```{r}
+knnModel <- train(knn, diabetesTask)
+
+```
+
+
+### Model Assessment -- Performance
+
+![](step4-assessment.jpg)
+
+The predicted valuea is then compared to the true label based on the measure we select. The measure can be *mmce*, mean misclassification error, or *acc*, accurancy.
+
+```{r, warning= F}
+knnPred <- predict(knnModel, newdata = diabetesTib)
+knnPred
+performance(knnPred, measures = list(mmce, acc))
+```
+
+
